@@ -47,9 +47,40 @@ jobs:
           echo "Applying Argo CD Application manifests..."
           kubectl apply -f argocd/applications/
 
+      - name: Get Argo CD Access Details
+        run: |
+          echo "---------------------------------------------------"
+          echo "OBTENDO DADOS DE ACESSO AO ARGO CD"
+          
+          echo "Aguardando DNS do Load Balancer..."
+          DNS_ALB=""
+          for i in {1..20}; do
+            DNS_ALB=$(kubectl get ingress argocd-ingress -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null)
+            if [ -n "$DNS_ALB" ]; then
+              break
+            fi
+            echo "Tentativa $i: DNS ainda não disponível, aguardando 10s..."
+            sleep 10
+          done
+
+          if [ -z "$DNS_ALB" ]; then
+            echo "ERRO: O DNS do ALB demorou muito para ser gerado."
+          else
+            echo "URL DE ACESSO (HTTPS): https://$DNS_ALB"
+          fi
+
+          # Recupera a senha inicial do admin (decodifica do Secret)
+          ARGO_PWD=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
+          
+          echo "USUÁRIO: admin"
+          echo "SENHA: $ARGO_PWD"
+          echo "---------------------------------------------------"
+
       - name: Validate Application Pods
         run: |
           echo "Waiting for application pods to be ready..."
+          # Adicionado delay inicial para o Argo CD processar o novo estado do Git
+          sleep 30
           for app in ms-payment ms-order ms-production ms-orchestrator; do
             echo "Checking pods for $app..."
             kubectl wait --for=condition=Ready pod -l app=$app -n default --timeout=120s || true

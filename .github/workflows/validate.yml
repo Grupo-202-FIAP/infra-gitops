@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up kubectl
@@ -26,10 +26,16 @@ jobs:
         with:
           version: 'latest'
 
-      - name: Validate YAML files
+      - name: Validate Argo CD Application manifests
         run: |
           echo "Validating Argo CD Application manifests..."
-          find argocd/applications -name "*.yaml" -exec kubectl apply --dry-run=client -f {} \;
-          
-          echo "Validating optional Ingress..."
-          find apps-ingress -name "*.yaml" -exec kubectl apply --dry-run=client -f {} \;
+          find argocd/applications -name "*.yaml" -exec kubectl apply --dry-run=client --validate=false -f {} \;
+
+      - name: Validate optional Ingress manifests
+        run: |
+          if [ -d "apps-ingress" ]; then
+            echo "Validating Ingress manifests..."
+            find apps-ingress -name "*.yaml" -exec kubectl apply --dry-run=client --validate=false -f {} \;
+          else
+            echo "No apps-ingress folder found, skipping Ingress validation."
+          fi

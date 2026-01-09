@@ -1,21 +1,50 @@
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: ms-order
-  namespace: argocd
-spec:
-  project: default
+name: Deploy GitOps Applications
 
-  source:
-    repoURL: https://github.com/Grupo-202-FIAP/ms-order
-    targetRevision: main
-    path: infra/k8s
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: default
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
 
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Set up kustomize
+        uses: imranismail/setup-kustomize@v2
+        with:
+          version: 'latest'
+
+      - name: Configure kubeconfig
+        env:
+          AWS_REGION: us-east-1
+        run: |
+          aws eks update-kubeconfig \
+            --region $AWS_REGION \
+            --name nextime-cluster \
+            --role-arn arn:aws:iam::056075870573:role/github-action-role
+
+      - name: Apply Argo CD Applications
+        run: |
+          echo "Applying Argo CD Application manifests..."
+          kubectl apply -f argocd/applications/
+
+      - name: Validate Application Pods
+        run: |
+          echo "Waiting for application pods to be ready..."
+          for app in ms-payment ms-order ms-production ms-orchestrator; do
+            echo "Checking pods for $app..."
+            kubectl wait --for=condition=Ready pod -l app=$app -n default --timeout=120s || true
+            kubectl get pods -l app=$app -n default
+          done

@@ -16,14 +16,15 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Install kubectl and kustomize
-        run: |
-          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-          chmod +x kubectl
-          sudo mv kubectl /usr/local/bin/
-          curl -LO https://github.com/kubernetes-sigs/kustomize/releases/latest/download/kustomize_linux_amd64.tar.gz
-          tar -xzf kustomize_linux_amd64.tar.gz
-          sudo mv kustomize /usr/local/bin/
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Set up kustomize
+        uses: imranismail/setup-kustomize@v2
+        with:
+          version: 'latest'
 
       - name: Validate YAML files
         run: |

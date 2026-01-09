@@ -45,7 +45,7 @@ jobs:
       - name: Apply Argo CD Applications
         run: |
           echo "Applying Argo CD Application manifests..."
-          kubectl apply -f argocd/applications/
+          kubectl apply -f argocd/
 
       - name: Get Argo CD Access Details
         run: |

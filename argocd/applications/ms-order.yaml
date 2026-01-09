@@ -5,16 +5,14 @@ metadata:
   namespace: argocd
 spec:
   project: default
-
   source:
     repoURL: https://github.com/Grupo-202-FIAP/ms-order
     targetRevision: main
     path: infra/k8s
-
+    kustomize: {}
   destination:
     server: https://kubernetes.default.svc
     namespace: default
-
   syncPolicy:
     automated:
       prune: true

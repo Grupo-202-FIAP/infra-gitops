@@ -1,4 +1,4 @@
-name: Deploy GitOps Applications
+name: Deploy GitOps Applications via OIDC
 
 on:
   push:
@@ -7,6 +7,10 @@ on:
   pull_request:
     branches:
       - main
+
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
   deploy:
@@ -26,14 +30,17 @@ jobs:
         with:
           version: 'latest'
 
-      - name: Configure kubeconfig
-        env:
-          AWS_REGION: us-east-1
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: arn:aws:iam::056075870573:role/github-action-role
+          aws-region: us-east-1
+
+      - name: Configure kubeconfig for EKS
         run: |
           aws eks update-kubeconfig \
-            --region $AWS_REGION \
-            --name nextime-cluster \
-            --role-arn arn:aws:iam::056075870573:role/github-action-role
+            --region us-east-1 \
+            --name nextime-cluster
 
       - name: Apply Argo CD Applications
         run: |

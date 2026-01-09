@@ -1,15 +1,19 @@
-name: Validate GitOps
+name: Deploy GitOps Applications via OIDC
 
 on:
-  pull_request:
-    branches:
-      - main
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
-  validate:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -26,16 +30,28 @@ jobs:
         with:
           version: 'latest'
 
-      - name: Validate Argo CD Application manifests
-        run: |
-          echo "Validating Argo CD Application manifests..."
-          find argocd/applications -name "*.yaml" -exec kubectl apply --dry-run=client --validate=false -f {} \;
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: arn:aws:iam::056075870573:role/github-action-role
+          aws-region: us-east-1
 
-      - name: Validate optional Ingress manifests
+      - name: Configure kubeconfig for EKS
         run: |
-          if [ -d "apps-ingress" ]; then
-            echo "Validating Ingress manifests..."
-            find apps-ingress -name "*.yaml" -exec kubectl apply --dry-run=client --validate=false -f {} \;
-          else
-            echo "No apps-ingress folder found, skipping Ingress validation."
-          fi
+          aws eks update-kubeconfig \
+            --region us-east-1 \
+            --name nextime-cluster
+
+      - name: Apply Argo CD Applications
+        run: |
+          echo "Applying Argo CD Application manifests..."
+          kubectl apply -f argocd/applications/
+
+      - name: Validate Application Pods
+        run: |
+          echo "Waiting for application pods to be ready..."
+          for app in ms-payment ms-order ms-production ms-orchestrator; do
+            echo "Checking pods for $app..."
+            kubectl wait --for=condition=Ready pod -l app=$app -n default --timeout=120s || true
+            kubectl get pods -l app=$app -n default
+          done

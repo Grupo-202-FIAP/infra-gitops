@@ -10,6 +10,7 @@ metadata:
     alb.ingress.kubernetes.io/group.name: "nextime-infra-group"
     alb.ingress.kubernetes.io/group.order: '20'
 spec:
+  ingressClassName: alb
   rules:
     - http:
         paths:

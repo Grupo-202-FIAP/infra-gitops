@@ -47,38 +47,6 @@ jobs:
           echo "Applying Argo CD Application manifests..."
           kubectl apply -R -f argocd/
 
-      - name: Get Argo CD Access Details
-        run: |
-          echo "---------------------------------------------------"
-          echo "OBTENDO DADOS DE ACESSO AO ARGO CD"
-          
-          echo "Aguardando DNS do Load Balancer..."
-          DNS_ALB=""
-          for i in {1..20}; do
-            DNS_ALB=$(kubectl get ingress argocd-ingress -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
-          
-            if [ -n "$DNS_ALB" ]; then
-              echo "DNS encontrado na tentativa $i!"
-              break
-            fi
-          
-            echo "Tentativa $i: DNS ainda não disponível, aguardando 10s..."
-            sleep 10
-          done
-          
-          if [ -z "$DNS_ALB" ]; then
-            echo "AVISO: O DNS do ALB ainda não foi propagado. Verifique no Console da AWS ou use 'kubectl get ingress -n argocd'."
-          else
-            echo "URL DE ACESSO: https://$DNS_ALB"
-            echo "URL DAS APIS (Exemplo): https://$DNS_ALB/order"
-          fi
-          
-          ARGO_PWD=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" 2>/dev/null | base64 -d || echo "Senha inicial não encontrada (já deve ter sido alterada).")
-          
-          echo "USUÁRIO: admin"
-          echo "SENHA: $ARGO_PWD"
-          echo "---------------------------------------------------"
-
       - name: Validate Application Pods
         run: |
           echo "Waiting for application pods to be ready..."
